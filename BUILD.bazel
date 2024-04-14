@@ -16,6 +16,21 @@ load("@com_github_google_flatbuffers//:build_defs.bzl", "flatbuffer_cc_library")
 load("//bazel:ray.bzl", "COPTS", "PYX_COPTS", "PYX_SRCS", "copy_to_workspace", "ray_cc_binary", "ray_cc_library", "ray_cc_test")
 load("@python3_9//:defs.bzl", python39 = "interpreter")
 
+genrule(
+    name = "git_head_commit_hash",
+    outs = ["src/ray/git_head_commit_hash.h"],
+    cmd = """
+V=$$(git rev-parse HEAD);
+echo "#pragma once;\n\nconstexpr char kGitHeadCommitHash[] = \\\"$$V\\\";" > $(location src/ray/git_head_commit_hash.h);
+""",
+    # Run the genrule outside of the sandbox so that it can read the git repository HEAD
+    # commit hash.
+    local = True,
+    # This ensures that this genrule is run on every build. If this were false, then
+    # version.h may not be updated and so it will have a stale commit hash.
+    stamp = True,
+)
+
 package(
     default_visibility = ["//visibility:public"],
 )
@@ -751,6 +766,7 @@ ray_cc_library(
         "src/ray/core_worker/store_provider/*.h",
         "src/ray/core_worker/store_provider/memory_store/*.h",
         "src/ray/core_worker/transport/*.h",
+        "src/ray/git_head_commit_hash.h",
     ]),
     deps = [
         ":gcs",

@@ -32,6 +32,7 @@
 #include "ray/core_worker/transport/direct_actor_transport.h"
 #include "ray/gcs/gcs_client/gcs_client.h"
 #include "ray/gcs/pb_util.h"
+#include "ray/git_head_commit_hash.h"
 #include "ray/stats/metric_defs.h"
 #include "ray/stats/stats.h"
 #include "ray/util/event.h"
@@ -131,6 +132,8 @@ CoreWorker::CoreWorker(const CoreWorkerOptions &options, const WorkerID &worker_
     intialize_cv_.SignalAll();
   });
   RAY_LOG(DEBUG) << "Constructing CoreWorker, worker_id: " << worker_id;
+
+  printf("CoreWorker start! git hash is: [%s]\n", kGitHeadCommitHash);
 
   if (RayConfig::instance().kill_child_processes_on_worker_exit_with_raylet_subreaper()) {
 #ifdef __linux__
