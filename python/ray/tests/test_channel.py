@@ -55,7 +55,7 @@ def test_set_error_before_read(ray_start_regular):
         a = Actor.remote()
         b = Actor.remote()
 
-        chan = ray_channel.Channel([b], 1000)
+        chan = ray_channel.Channel(a, [b], 1000)
         ray.get(a.pass_channel.remote(chan))
         ray.get(b.pass_channel.remote(chan))
 

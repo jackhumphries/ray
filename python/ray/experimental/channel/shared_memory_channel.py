@@ -263,7 +263,7 @@ class Channel(ChannelInterface):
 
     @staticmethod
     def _deserialize_reader_channel(
-        writer: ray.actor.ActorHandle,
+        writer: Optional[ray.actor.ActorHandle],
         readers: List[Optional[ray.actor.ActorHandle]],
         typ: int,
         writer_node_id,

@@ -82,6 +82,27 @@ def test_basic(ray_start_regular):
     compiled_dag.teardown()
 
 
+def test_driver_is_writer(ray_start_regular):
+    def blah(x):
+        print("Hello blah!\n")
+
+    with InputNode() as i:
+        dag = blah.bind(i)
+
+    compiled_dag = dag.experimental_compile()
+
+    for i in range(3):
+        output_channel = compiled_dag.execute(1)
+        # TODO(swang): Replace with fake ObjectRef.
+        result = output_channel.begin_read()
+        assert result == i + 1
+        output_channel.end_read()
+
+    # Note: must teardown before starting a new Ray session, otherwise you'll get
+    # a segfault from the dangling monitor thread upon the new Ray init.
+    compiled_dag.teardown()
+
+
 def test_actor_multi_methods(ray_start_regular):
     a = Actor.remote(0)
     with InputNode() as inp:
