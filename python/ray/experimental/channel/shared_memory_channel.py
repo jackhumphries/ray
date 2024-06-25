@@ -392,6 +392,14 @@ class Channel(ChannelInterface):
             )
 
     def write(self, value: Any):
+        """
+        print(
+            "shared memory channel write!, type is "
+            + str(type(value))
+            + ", value: "
+            + str(value)
+        )
+        """
         self.ensure_registered_as_writer()
 
         if not isinstance(value, SerializedObject):

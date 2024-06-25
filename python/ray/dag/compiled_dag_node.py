@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict, deque
+import time
 from typing import Any, Dict, List, Tuple, Union, Optional, Set
 import logging
 import threading
@@ -44,6 +45,11 @@ MAX_BUFFER_COUNT = MAX_BUFFER_TOTAL_MEMORY // MAX_BUFFER_SIZE
 class RayDAGArgs(NamedTuple):
     args: Tuple[Any, ...]
     kwargs: Dict[str, Any]
+
+@PublicAPI(stability="alpha")
+class RayDAGArgsOpt(NamedTuple):
+    payload_type: int
+    payload: bytes
 
 
 logger = logging.getLogger(__name__)
@@ -252,7 +258,14 @@ class DAGInputAdapter:
             def extract_arg(raw_args):
                 if not isinstance(raw_args, RayDAGArgs):
                     # Fast path for a single input.
-                    return raw_args
+                    payload_type = int.from_bytes(raw_args[:8], byteorder="big")
+                    if payload_type == 0:
+                        # bytes
+                        return raw_args[8:]
+                    else:
+                        # int
+                        assert payload_type == 1
+                        return int.from_bytes(raw_args[8:], byteorder="big")
                 else:
                     assert isinstance(raw_args, RayDAGArgs)
                     args = raw_args.args
@@ -1191,15 +1204,25 @@ class CompiledDAG:
 
         self._get_or_compile()
 
-        if len(args) == 1 and len(kwargs) == 0:
+        if len(args) == 1 and len(kwargs) == 0 and (isinstance(args[0], int) or isinstance(args[0], bytes)):
             # When serializing a tuple, the Ray serializer invokes pickle5, which adds
             # several microseconds of overhead. One common case for accelerated DAGs is
             # passing a single argument (oftentimes of of type `bytes`, which requires
             # no serialization). To avoid imposing this overhead on this common case, we
             # create a fast path for this case that avoids pickle5.
-            inp = args[0]
+            a = time.perf_counter()
+            if isinstance(args[0], bytes):
+                inp = (0).to_bytes(8, "big") + args[0]
+            elif isinstance(args[0], int):
+                inp = (1).to_bytes(8, "big") + args[0].to_bytes(8, "big")
+            else:
+                assert False
+                inp = RayDAGArgsOpt(payload_type=2, payload=args[0])
+            b = time.perf_counter()
+            print("fast path took " + str(1000000 * (b - a)) + " us")
         else:
             inp = RayDAGArgs(args=args, kwargs=kwargs)
+        print("here: " + str(inp) + " (" + str(type(inp)) + ")")
         self._dag_submitter.write(inp)
 
         ref = CompiledDAGRef(self, self._execution_index)

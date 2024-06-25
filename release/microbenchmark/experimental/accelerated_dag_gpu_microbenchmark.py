@@ -87,7 +87,6 @@ class NcclWorker:
         other_rank = (self.rank + 1) % self.world_size
 
         def _run():
-
             if self.rank == 0:
                 i = np.random.randint(100)
                 input_buffer = torch.ones(shape, dtype=dtype, device=self.device) * i
@@ -113,7 +112,7 @@ def exec_ray_dag(
                 TorchTensorType(
                     "auto" if dynamic_shape else SHAPE,
                     "auto" if dynamic_shape else DTYPE,
-                    transport="nccl" if use_nccl else None,
+                    transport="nccl" if use_nccl else "auto",
                 )
             )
 
@@ -124,9 +123,9 @@ def exec_ray_dag(
 
         def _run():
             i = np.random.randint(100)
-            output_channel = dag.execute(i)
+            ref = dag.execute(i)
             # TODO(swang): Replace with fake ObjectRef.
-            result = output_channel.read()
+            result = ray.get(ref)
             assert result == (i, SHAPE, DTYPE)
 
     else:
@@ -328,6 +327,7 @@ def main():
         }
     )
 
+    """
     results += timeit("exec_torch_cpu_cpu", _exec_torch_cpu_cpu)
     results += timeit("exec_torch_gpu", _exec_torch_gpu)
     results += timeit("exec_torch_gpu_cpu_gpu", _exec_torch_gpu_cpu_gpu)
@@ -341,6 +341,7 @@ def main():
     results += exec_ray_dag_cpu()
     results += exec_ray_core_gpu()
     results += exec_ray_dag_gpu_cpu_gpu()
+    """
     results += exec_ray_dag_gpu_nccl(dynamic_shape=True)
     results += exec_ray_dag_gpu_nccl(dynamic_shape=False)
 

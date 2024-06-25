@@ -1,4 +1,5 @@
 import io
+import time
 import logging
 import threading
 import traceback
@@ -514,6 +515,11 @@ class SerializationContext:
             # If the object is a byte array, skip serializing it and
             # use a special metadata to indicate it's raw binary. So
             # that this object can also be read by Java.
+            print("serialize bytes!")
             return RawSerializedObject(value)
         else:
-            return self._serialize_to_msgpack(value)
+            a = time.perf_counter()
+            ret = self._serialize_to_msgpack(value)
+            b = time.perf_counter()
+            print("B serialize: " + str(value) + ", (" + str(type(value)) + "), took " + str(1000000 * (b - a)) + " us")
+            return ret
